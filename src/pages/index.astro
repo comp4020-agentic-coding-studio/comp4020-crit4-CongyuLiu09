@@ -1,23 +1,304 @@
 ---
 import Layout from "../layouts/Layout.astro";
+
+const WAVEFORMS = ["sine", "triangle", "sawtooth", "square"] as const;
+const WAVEFORM_LABELS: Record<(typeof WAVEFORMS)[number], string> = {
+  sine: "Sine",
+  triangle: "Triangle",
+  sawtooth: "Saw",
+  square: "Square",
+};
 ---
 
 <Layout
-  title="COMP4020 prototype"
-  description="Replace this with one sentence saying what this page is. A search result and a link preview both show it."
+  title="An instrument"
+  description="A browser instrument: move to make sound, no way to play it wrong."
 >
-  <h1>COMP4020 prototype</h1>
-  <p data-testid="intro">
-    Replace this with your prototype. This week's brief is on the course website;
-    <code>spec/README.md</code> explains how the checks in this repo relate to it.
-  </p>
+  <div id="surface" class="surface" tabindex="0" role="application" aria-label="An instrument. Click, tap, or drag to play; arrow keys also work.">
+    <div id="glow" class="glow" aria-hidden="true"></div>
+    <div id="hint" class="hint">
+      <h1>Play the browser</h1>
+      <p>
+        Click, tap, or drag anywhere — or use the arrow keys. Move to play; let
+        go to stop. Press 1&ndash;4 to change the voice.
+      </p>
+    </div>
+    <div class="waveform-picker" role="group" aria-label="Voice">
+      {
+        WAVEFORMS.map((type, index) => (
+          <button
+            type="button"
+            class="waveform-button"
+            data-waveform={type}
+            aria-pressed={index === 0 ? "true" : "false"}
+          >
+            {index + 1} &middot; {WAVEFORM_LABELS[type]}
+          </button>
+        ))
+      }
+    </div>
+  </div>
 </Layout>
 
-<script>
-  // Your prototype's TypeScript goes here. If the week's spec rules out
-  // JavaScript, delete this script block.
-  const intro = document.querySelector<HTMLElement>('[data-testid="intro"]');
-  if (intro) {
-    intro.dataset.ready = "true";
+<style>
+  .surface {
+    position: fixed;
+    inset: 0;
+    touch-action: none;
+    cursor: crosshair;
   }
+
+  .surface:focus-visible {
+    outline: 2px solid #f5f5f7;
+    outline-offset: -4px;
+  }
+
+  .glow {
+    position: fixed;
+    top: var(--glow-y, 50%);
+    left: var(--glow-x, 50%);
+    width: var(--glow-size, 140px);
+    height: var(--glow-size, 140px);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at center,
+      hsl(var(--glow-hue, 200) 90% 65% / 0.9),
+      hsl(var(--glow-hue, 200) 90% 45% / 0.15) 60%,
+      transparent 70%
+    );
+    filter: blur(2px);
+    pointer-events: none;
+  }
+
+  .glow:not(.glow--engaged) {
+    animation: idle-pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes idle-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
+
+  .hint {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 1.5rem;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+  }
+
+  .hint h1 {
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+  }
+
+  .hint p {
+    max-width: 30rem;
+    margin: 0;
+    color: #c8c8d0;
+  }
+
+  .hint--hidden {
+    opacity: 0;
+  }
+
+  .waveform-picker {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.5rem;
+    z-index: 10;
+  }
+
+  .waveform-button {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgb(245 245 247 / 30%);
+    background: rgb(245 245 247 / 8%);
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .waveform-button[aria-pressed="true"] {
+    background: rgb(245 245 247 / 25%);
+    border-color: rgb(245 245 247 / 70%);
+  }
+</style>
+
+<script>
+  import {
+    createVoice,
+    mapYToGain,
+    setEngaged,
+    setWaveform,
+    updateVoice,
+    type Voice,
+    type Waveform,
+  } from "../lib/synth";
+
+  const WAVEFORMS: Waveform[] = ["sine", "triangle", "sawtooth", "square"];
+  const WAVEFORM_HUES: Record<Waveform, number> = {
+    sine: 200,
+    triangle: 150,
+    sawtooth: 30,
+    square: 300,
+  };
+  const ARROW_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
+  const ARROW_STEP = 0.02;
+
+  const surface = document.getElementById("surface")!;
+  const glow = document.getElementById("glow")!;
+  const hint = document.getElementById("hint")!;
+  const waveformButtons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>(".waveform-button"),
+  );
+
+  let audioCtx: AudioContext | null = null;
+  let voice: Voice | null = null;
+  let waveformIndex = 0;
+  let position = { x: 0.5, y: 0.5 };
+  let pointerEngaged = false;
+  let keyboardEngaged = false;
+  let engaged = false;
+  const pressedArrows = new Set<string>();
+
+  function clamp01(value: number): number {
+    return Math.min(1, Math.max(0, value));
+  }
+
+  function ensureAudio(): void {
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+      voice = createVoice(audioCtx);
+    }
+    if (audioCtx.state === "suspended") {
+      void audioCtx.resume();
+    }
+  }
+
+  function hideHint(): void {
+    hint.classList.add("hint--hidden");
+  }
+
+  function syncEngagement(): void {
+    const next = pointerEngaged || keyboardEngaged;
+    if (next === engaged) return;
+    engaged = next;
+    if (voice) setEngaged(voice, engaged, position.y);
+    if (engaged) hideHint();
+  }
+
+  function selectWaveform(index: number): void {
+    waveformIndex = index;
+    if (voice) setWaveform(voice, WAVEFORMS[index]);
+    waveformButtons.forEach((button, i) => {
+      button.setAttribute("aria-pressed", i === index ? "true" : "false");
+    });
+  }
+
+  function setPositionFromPointer(event: PointerEvent): void {
+    position = {
+      x: clamp01(event.clientX / window.innerWidth),
+      y: clamp01(event.clientY / window.innerHeight),
+    };
+  }
+
+  surface.addEventListener("pointerdown", (event) => {
+    ensureAudio();
+    surface.setPointerCapture(event.pointerId);
+    setPositionFromPointer(event);
+    pointerEngaged = true;
+    syncEngagement();
+  });
+
+  surface.addEventListener("pointermove", (event) => {
+    if (!pointerEngaged) return;
+    setPositionFromPointer(event);
+  });
+
+  function releasePointer(event: PointerEvent): void {
+    if (surface.hasPointerCapture(event.pointerId)) {
+      surface.releasePointerCapture(event.pointerId);
+    }
+    pointerEngaged = false;
+    syncEngagement();
+  }
+
+  surface.addEventListener("pointerup", releasePointer);
+  surface.addEventListener("pointercancel", releasePointer);
+
+  window.addEventListener("keydown", (event) => {
+    if (ARROW_KEYS.has(event.key)) {
+      event.preventDefault();
+      ensureAudio();
+      pressedArrows.add(event.key);
+      keyboardEngaged = true;
+      syncEngagement();
+    } else if (/^[1-4]$/.test(event.key)) {
+      ensureAudio();
+      selectWaveform(Number(event.key) - 1);
+    }
+  });
+
+  window.addEventListener("keyup", (event) => {
+    if (ARROW_KEYS.has(event.key)) {
+      pressedArrows.delete(event.key);
+      if (pressedArrows.size === 0) {
+        keyboardEngaged = false;
+        syncEngagement();
+      }
+    }
+  });
+
+  waveformButtons.forEach((button, index) => {
+    button.addEventListener("click", () => {
+      ensureAudio();
+      selectWaveform(index);
+    });
+  });
+
+  function updateGlow(): void {
+    const hue = WAVEFORM_HUES[WAVEFORMS[waveformIndex]];
+    const gainNow = engaged ? mapYToGain(position.y) : 0.02;
+    const size = 120 + gainNow * 900;
+    glow.style.setProperty("--glow-x", `${position.x * 100}%`);
+    glow.style.setProperty("--glow-y", `${position.y * 100}%`);
+    glow.style.setProperty("--glow-size", `${size}px`);
+    glow.style.setProperty("--glow-hue", String(hue));
+    glow.classList.toggle("glow--engaged", engaged);
+  }
+
+  function frame(): void {
+    if (pressedArrows.size > 0) {
+      let { x, y } = position;
+      if (pressedArrows.has("ArrowLeft")) x -= ARROW_STEP;
+      if (pressedArrows.has("ArrowRight")) x += ARROW_STEP;
+      if (pressedArrows.has("ArrowUp")) y -= ARROW_STEP;
+      if (pressedArrows.has("ArrowDown")) y += ARROW_STEP;
+      position = { x: clamp01(x), y: clamp01(y) };
+    }
+    if (engaged && voice) {
+      updateVoice(voice, position.x, position.y);
+    }
+    updateGlow();
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
 </script>
