@@ -1,0 +1,23 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="COMP4020 prototype"
+  description="Replace this with one sentence saying what this page is. A search result and a link preview both show it."
+>
+  <h1>COMP4020 prototype</h1>
+  <p data-testid="intro">
+    Replace this with your prototype. This week's brief is on the course website;
+    <code>spec/README.md</code> explains how the checks in this repo relate to it.
+  </p>
+</Layout>
+
+<script>
+  // Your prototype's TypeScript goes here. If the week's spec rules out
+  // JavaScript, delete this script block.
+  const intro = document.querySelector<HTMLElement>('[data-testid="intro"]');
+  if (intro) {
+    intro.dataset.ready = "true";
+  }
+</script>
