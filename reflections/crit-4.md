@@ -6,8 +6,7 @@ The main thing I learned this week was that the agent could generate a technical
 
 One important correction was the relationship between pointer movement and sound. A direct mapping can make the instrument react too aggressively, especially when pitch or volume changes immediately with every small movement. I therefore focused the agent on smoothing parameter changes and constraining the musical range so that movement remained expressive without becoming unpleasant. This made the interaction feel more deliberate and reduced the chance that a player could accidentally produce an extremely harsh result.
 
-I also directed the agent to treat the first in
-teraction as part of the instrument rather than as an instruction screen. Because Web Audio requires a user gesture before the `AudioContext` can resume, the first click or touch needed to both activate the audio system and immediately reward the player with sound. This helped make the instrument understandable without requiring a long explanation.
+I also directed the agent to treat the first interaction as part of the instrument rather than as an instruction screen. Because Web Audio requires a user gesture before the `AudioContext` can resume, the first click or touch needed to both activate the audio system and immediately reward the player with sound. This helped make the instrument understandable without requiring a long explanation.
 
 The agent was useful for implementing the Web Audio graph, handling pointer and keyboard events, and iterating quickly on interaction ideas. My role was to provide the judgement that automated checks could not provide: whether the sound was responsive, whether the gesture was tiring, whether the mapping felt expressive, and whether the result was enjoyable enough to keep playing.
 
