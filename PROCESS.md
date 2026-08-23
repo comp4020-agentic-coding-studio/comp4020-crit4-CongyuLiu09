@@ -1,85 +1,71 @@
 # Process overview
 
-<!-- TEMPLATE: this file is a shape to fill in, not a form. Replace everything
-     in it with your own overview, and delete this comment — `pnpm
-     check:evidence` will remind you if it's still here. -->
-
-A reading-guide to how the work came together --- a map to your process, not an
-essay about it. Markers read this file and follow its citations; they don't
-trawl the repo for evidence you didn't point at, so if a moment mattered, cite
-it.
-
-This file is the shape; the course site's
-[assessment page](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#what-you-submit)
-is the requirement, and its
-[word counts](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#word-counts)
-cover every deliverable.
-
 ## What I built
 
-One paragraph: the thing, and the idea behind it.
+I built a browser-based theremin that turns the page into a live musical instrument using the Web Audio API. The player uses pointer, touch, or keyboard input to create and shape sound directly in the browser rather than triggering prerecorded audio. I chose a theremin-style interaction because continuous movement gives the player expressive control without requiring musical knowledge, while constrained and smoothed sound mappings make it difficult to produce an obviously “wrong” result.
 
 ## The moments that mattered
 
-Three or four for an assignment; fewer is fine for a weekly prototype. Keep the
-list short so each moment has room to do all four jobs:
+### 1. I chose continuous control instead of a button-based instrument
 
-1. **what happened** --- the problem, or the thing that went wrong
-2. **what you did instead of the obvious thing** --- the call you made, and why
-   it beat the obvious one
-3. **how you knew it was right** --- the check you ran, the viewport you looked
-   at, what you read before accepting the diff
-4. **the citation** --- a commit or commit range, a `CLAUDE.md` change, a check
-   that went from red to green, a prompt paired with the commit it produced
+The first important decision was the form of the instrument. A chord-pad grid or sequencer would have been easier to make predictable, but those interactions would mostly involve selecting predefined sounds. I chose a theremin because the player's movement itself could become the performance. This better matched the brief's requirement that two people using the same page should naturally sound different.
 
-Jobs 2 and 3 are the ones the repo can't tell a reader on its own, so they're
-where the marks are. The strongest moments are the ones where a correction
-landed in the **harness** --- the standards and checks your work has to satisfy
---- rather than in a retry: a rule added to `CLAUDE.md`, a check wired up, an
-attempt thrown away. Retrying until it passes is the routine case, and changing
-what the work runs against is the skilled one.
+I directed the agent around the experience rather than only the implementation:
 
-Cite each moment as a link whose text is the commit hash or range and whose
-target is this repo's commit or compare URL, so a reader clicks straight to the
-evidence:
+> Choose Theremin. Build it as an expressive, low-friction browser instrument. Prioritise immediate first-sound interaction, smooth parameter transitions, no “wrong” notes, and visual feedback tied to the sound.
 
-- one commit: [`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d)
-- a range:
-  [`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
+Before accepting the implementation, I approached the page without relying on instructions and checked whether its opening state encouraged me to interact immediately. I also checked that pointer movement meaningfully changed the result instead of functioning like a disguised play button.
 
-To pair a prompt with the commit it produced, quote the prompt (curated, not a
-full transcript) next to the citation:
+[`3c7dea5`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit4-CongyuLiu09/commit/3c7dea5)
 
-> the prompt, verbatim
+### 2. Passing the audio requirements was not enough to make it playable
 
-Screenshots are welcome where one carries the verification better than a
-sentence does. Commit the file to this repo and link it with a **relative**
-path, which is what makes it render on GitHub: `![alt text](docs/before.png)`.
-Images don't count towards the word count and don't replace the citation.
+The starter already provided Crit 4 invariant tests for live audio and multi-input playability. Those tests gave the implementation a useful technical floor: the work needed live Web Audio behaviour and appropriate input paths rather than prerecorded playback.
 
-### A worked moment, for shape
+[`8ade8e2`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit4-CongyuLiu09/commit/8ade8e2)
 
-Delete this section along with the rest of the boilerplate --- it's here to show
-the four jobs in one paragraph, not to be imitated in content.
+However, those checks could not answer the more important sensory questions: whether pitch changes felt too abrupt, whether the sound became harsh, or whether controlling it required excessive precision. Instead of treating a technically working oscillator as finished, I used repeated listening as an additional acceptance check.
 
-> The date formatter kept coming back with `toLocaleDateString()` and no locale
-> argument, so the same build rendered differently on my machine and in CI. I'd
-> already re-prompted it twice, which fixed the line but not the habit, so the
-> third time I put the rule in `CLAUDE.md` instead
-> ([`3f9ac21`](https://github.com/YOUR-ORG/YOUR-REPO/commit/3f9ac21)) and added
-> a spec test that fails on a bare `toLocaleDateString`. That's what told me it
-> had actually taken: the test went red against the old code and green against
-> the new, and the next two features it wrote passed it without prompting
-> ([`3f9ac21...b7e0d14`](https://github.com/YOUR-ORG/YOUR-REPO/compare/3f9ac21...b7e0d14)).
+I directed the agent to avoid raw, abrupt mappings:
+
+> Do not just map every pointer update directly to an abrupt frequency change. Smooth the transitions and constrain the musical range so free movement remains expressive without becoming unpleasant or excessively sensitive.
+
+I tested this by making slow movements, very small movements, and fast movements across the page. I listened for sudden jumps, clicks, uncomfortable frequencies, and whether the instrument still responded clearly to different gestures.
+
+[`3c7dea5`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit4-CongyuLiu09/commit/3c7dea5)
+
+### 3. My ear became part of the harness
+
+The main correction to my process this week was recognising that automated checks could verify implementation properties but could not judge the quality of the musical interaction. An `AudioContext` can exist, input handlers can work, and all invariant checks can pass while the resulting instrument still feels bad to play.
+
+The existing harness gave me structural constraints to work against:
+
+[`d911c06...8ade8e2`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit4-CongyuLiu09/compare/d911c06...8ade8e2)
+
+I added human play-testing on top of that harness. After the agent produced the instrument, I did not accept the result based only on whether the code built. I repeatedly played it and evaluated latency, sensitivity, tonal harshness, smoothness, and whether gestures felt connected to what I heard. Observations from playing became the basis for corrections I gave back to the agent.
+
+This was different from repeatedly prompting the agent to “improve” the page. The grounding came from a specific external signal — what I could actually hear and feel when using the browser as an instrument.
+
+[`3c7dea5`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit4-CongyuLiu09/commit/3c7dea5)
+
+### 4. The first gesture needed to be part of the instrument
+
+Web Audio begins with a suspended `AudioContext`, so the browser requires a user gesture before sound can begin. The obvious interface would have been a separate “Start Audio” button followed by instructions. I instead treated that restriction as part of the instrument design.
+
+The first interaction activates the audio system and leads directly into playing. This matters especially for the crit because another person encounters the work before I explain it. The opening screen therefore needed to invite action rather than explain the implementation.
+
+I verified this by reloading the page and testing it from a cold start rather than only continuing from an already-active development session. I checked that the first interaction led naturally toward sound, and I tested more than one input path so that the experience did not depend entirely on my normal mouse workflow.
+
+[`3c7dea5`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit4-CongyuLiu09/commit/3c7dea5)
 
 ## Before you ship
 
-`pnpm check:evidence` verifies your citations resolve to real commits, that a
-reflection entry the marker reads is in `reflections/`, and that your
-`CLAUDE.md` is there --- before a marker ever opens the file. It checks that
-your map is traceable, not that it is good: the marker judges whether your
-small, deliberately chosen set of moments shows real judgement and reflection. A
-green check is not a substitute for that curation.
+Before submission I used the starter's checks to verify the fixed contract, including:
 
-Images aren't checked: whether one renders is visible the moment you look. Open
-this file on GitHub and look at it before you ship.
+```bash
+pnpm check:evidence
+```
+
+I also checked the built/deployed version rather than relying only on the local development server, and opened this file on GitHub to confirm that its evidence links resolve correctly.
+
+The most important lesson from the prototype was that technical correctness and experiential correctness were different things. The starter harness could establish whether the implementation satisfied measurable requirements, but listening and play-testing were necessary to decide whether the result actually worked as an instrument. This made my own judgement part of the harness rather than something applied only after the agent had finished.

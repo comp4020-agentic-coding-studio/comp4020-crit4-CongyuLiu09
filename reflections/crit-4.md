@@ -1,0 +1,13 @@
+# Crit 4 Reflection
+
+This week I built a browser-based theremin using the Web Audio API. The instrument is controlled directly through pointer movement, so the player shapes the sound through position and movement rather than selecting from a fixed sequence of notes. I chose this direction because it matched the brief well: it is immediate, expressive, and there is no clear “wrong” way to play it.
+
+The main thing I learned this week was that the agent could generate a technically working audio system, but it could not judge whether the instrument actually felt good to play. Early versions could satisfy the implementation requirements while still feeling too harsh, too sensitive, or too mechanical. This meant that listening became part of my development harness. I had to repeatedly play the instrument myself, notice where the sound or interaction felt uncomfortable, and then direct the agent to change those parts.
+
+One important correction was the relationship between pointer movement and sound. A direct mapping can make the instrument react too aggressively, especially when pitch or volume changes immediately with every small movement. I therefore focused the agent on smoothing parameter changes and constraining the musical range so that movement remained expressive without becoming unpleasant. This made the interaction feel more deliberate and reduced the chance that a player could accidentally produce an extremely harsh result.
+
+I also directed the agent to treat the first interaction as part of the instrument rather than as an instruction screen. Because Web Audio requires a user gesture before the `AudioContext` can resume, the first click or touch needed to both activate the audio system and immediately reward the player with sound. This helped make the instrument understandable without requiring a long explanation.
+
+The agent was useful for implementing the Web Audio graph, handling pointer and keyboard events, and iterating quickly on interaction ideas. My role was to provide the judgement that automated checks could not provide: whether the sound was responsive, whether the gesture was tiring, whether the mapping felt expressive, and whether the result was enjoyable enough to keep playing.
+
+The main breakthrough for me was realising that for interactive audio, correctness is not only whether the code runs. The browser can pass every technical check and still produce a poor instrument. In this task, listening and play-testing became an essential part of directing the agent, and the most useful prompts were the ones based on specific sensory problems I noticed while playing rather than abstract requests to “make it better.”

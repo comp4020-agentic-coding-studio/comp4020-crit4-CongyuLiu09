@@ -101,7 +101,7 @@ describe("check:evidence", () => {
 
   it("rejects a repo whose expected reflection is missing", () => {
     const result = spawnSync(process.execPath, [script], {
-      cwd: fixture(true, "crit-2.md"),
+      cwd: fixture(true, "crit-4.md"),
       env,
       encoding: "utf8",
     });
